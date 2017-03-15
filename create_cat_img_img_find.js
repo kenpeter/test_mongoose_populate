@@ -101,14 +101,15 @@ mongoose.connection.on('connected', function () {
       return Promise.resolve();
     })
     .then(() => {
-      // Now pull one category
+      //
+      console.log("--- known the category and pull all images ---");
       return Category
-        .findOne()
+        .find({name: 'test_category'})
         .exec();
     })
     .then((res) => {
       //
-      console.log("--- now pull 1 category ---");
+      console.log("--- known the category and pull all images 1---");
       console.log(res);
       return Promise.resolve();
     })
