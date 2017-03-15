@@ -1,6 +1,7 @@
 // http://mongoosejs.com/docs/populate.html
 // http://theholmesoffice.com/mongoose-connection-best-practice/
 // http://mongoosejs.com/docs/api.html#document_Document-populate
+// http://eddywashere.com/blog/switching-out-callbacks-with-promises-in-mongoose/
 
 var mongoose = require('mongoose');
 mongoose.Promise = require('bluebird');
@@ -18,7 +19,6 @@ var ImageSchema = new Schema({
 //
 var CategorySchema = new Schema({
   name: String,
-  images: [{ type: Schema.Types.ObjectId, ref: 'Image' }],
   createdDate: { type: Date, default: Date.now },
   updatedDate: { type: Date, default: Date.now }
 });
@@ -47,6 +47,9 @@ mongoose.connection.on('connected', function () {
   console.log('Mongoose default connection open to ' + dbUrl);
 
   var cat = {};
+  var catData;
+  var imgData;
+
   // http://eddywashere.com/blog/switching-out-callbacks-with-promises-in-mongoose/
   Image.remove({}).exec()
     .then(() => {
@@ -55,7 +58,7 @@ mongoose.connection.on('connected', function () {
     .then(() => {
       console.log('---- all remove ----');
       // category
-      var catData = {
+      catData = {
         name: 'test_category'
       };
       cat = new Category(catData);
@@ -74,17 +77,50 @@ mongoose.connection.on('connected', function () {
       return img.save();
     })
     .then(() => {
-      // Now pull
+      // img 1
+      imgData = {
+        fileName: 'test_img_1.jpg',
+        filePath : '/tmp/test_img_1.jpg',
+        category: cat
+      };
+      img = new Image(imgData);
+
+      return img.save();
+    })
+    .then(() => {
+      // Now pull images
       return Image
-        .findOne({})
+        .find({})
         .populate('category')
         .exec();
     })
+    .then((res) => {
+      // can get result from previous
+      console.log("--- now pull all images ---");
+      console.log(res);
+      return Promise.resolve();
+    })
     .then(() => {
+      // Now pull one category
+      return Category
+        .findOne()
+        .exec();
+    })
+    .then((res) => {
+      //
+      console.log("--- now pull 1 category ---");
+      console.log(res);
+      return Promise.resolve();
+    })
+    .then(() => {
+      //
       console.log("--- all done ---");
       process.exit(0);
+    })
+    .catch((err) => {
+      console.error(err);
     });
-    
+
 });
 
 // If the connection throws an error
