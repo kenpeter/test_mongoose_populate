@@ -2,9 +2,13 @@
 // http://theholmesoffice.com/mongoose-connection-best-practice/
 // http://mongoosejs.com/docs/api.html#document_Document-populate
 // http://eddywashere.com/blog/switching-out-callbacks-with-promises-in-mongoose/
+// https://gist.github.com/JedWatson/8519978
 
+
+var async = require('async');
 var mongoose = require('mongoose');
 mongoose.Promise = require('bluebird');
+var Promise = require('bluebird');
 var Schema = mongoose.Schema;
 
 //
@@ -101,16 +105,51 @@ mongoose.connection.on('connected', function () {
       return Promise.resolve();
     })
     .then(() => {
-      //
-      console.log("--- known the category and pull all images ---");
-      return Category
-        .find({name: 'test_category'})
-        .exec();
+
+      /*
+      return Category.find().populate('images').exec((err, categories) => {
+        return Promise.each(categories, (category) => {
+          return new Promise((resolve, reject) => {
+            Image.find().where('category').equals(category._id).exec((err, images) => {
+              console.log('~~~~~~~~~');
+              console.log(images);
+              console.log('~~~~~~~~~');
+              category.images = images;
+
+              resolve();
+            });
+          });
+
+        });
+      });
+      */
+
+      // cat aggregate, basically compute it
+      return Category.aggregate([
+        // $match, means search
+        // search param
+        { "$match": { "name": "test_category" } },
+        {
+          // $lookup means search
+          "$lookup": {
+            // images is the local collection
+            // why called images, because that is what is inside the mongo
+            "from": "images",
+            // images has its own _id
+            "localField": "_id",
+            // foreign field, which is category
+            "foreignField": "category",
+            // as images
+            "as": "images"
+          }
+        }
+      ]).exec();
+
     })
     .then((res) => {
       //
       console.log("--- known the category and pull all images 1---");
-      console.log(res);
+      myConsole(res);
       return Promise.resolve();
     })
     .then(() => {
@@ -141,3 +180,9 @@ process.on('SIGINT', function() {
     process.exit(0);
   });
 });
+
+
+// Define your function
+function myConsole(myObject) {
+  console.log(JSON.stringify(myObject, null, 4));
+}
