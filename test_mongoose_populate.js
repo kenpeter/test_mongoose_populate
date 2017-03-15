@@ -3,6 +3,7 @@
 // http://mongoosejs.com/docs/api.html#document_Document-populate
 
 var mongoose = require('mongoose');
+mongoose.Promise = require('bluebird');
 var Schema = mongoose.Schema;
 
 //
@@ -45,43 +46,45 @@ mongoose.connect(dbUrl, dbOption);
 mongoose.connection.on('connected', function () {
   console.log('Mongoose default connection open to ' + dbUrl);
 
-  // callback, always callback.
-  // remove
-  Image.remove({}, () => {
-    Category.remove({}, () => {
+  var cat = {};
+  // http://eddywashere.com/blog/switching-out-callbacks-with-promises-in-mongoose/
+  Image.remove({}).exec()
+    .then(() => {
+      return Category.remove({}).exec();
+    })
+    .then(() => {
+      console.log('---- all remove ----');
       // category
       var catData = {
         name: 'test_category'
       };
-      var cat = new Category(catData);
-      var imgData;
-      var img;
+      cat = new Category(catData);
 
-      cat.save((error) => {
-        if (error) return handleError(error);
+      return cat.save();
+    })
+    .then(() => {
+      // img
+      imgData = {
+        fileName: 'test_img.jpg',
+        filePath : '/tmp/test_img.jpg',
+        category: cat
+      };
+      img = new Image(imgData);
 
-        // img
-        imgData = {
-          fileName: 'test_img.jpg',
-          filePath : '/tmp/test_img.jpg',
-          category: cat
-        };
-        img = new Image(imgData);
-
-        img.save((error) => {
-          if (error) return handleError(error);
-
-          console.log('-- all done --');
-          process.exit(0);
-        });
-      }); //
-
+      return img.save();
+    })
+    .then(() => {
+      // Now pull
+      return Image
+        .findOne({})
+        .populate('category')
+        .exec();
+    })
+    .then(() => {
+      console.log("--- all done ---");
+      process.exit(0);
     });
-  });
-
-
-
-
+    
 });
 
 // If the connection throws an error
